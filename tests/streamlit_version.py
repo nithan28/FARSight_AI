@@ -19,7 +19,8 @@ TARGET_SECTIONS = [
     "company affair", "introduction", "background", "overview of the company",
     "overview of the business", "background information"
 ]
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+#OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 
 if not OPENAI_API_KEY:
     st.error("OpenAI_API_KEY not found. Please set it as an environment variable.")
@@ -53,6 +54,7 @@ def crawl_website(start_url, max_pages=5, text_limit=15000):
     visited = set()
     to_visit = set([start_url])
     combined_text = ""
+    crawl_log = []
 
     while to_visit and len(visited) < max_pages:
         url = to_visit.pop()
@@ -61,21 +63,25 @@ def crawl_website(start_url, max_pages=5, text_limit=15000):
         try:
             response = requests.get(url, timeout=10, headers=headers)
             if response.status_code != 200:
-                st.warning(f"Failed to fetch {url} - Status code: {response.status_code}")
+                crawl_log.append(f"❌ Failed to fetch {url} - Status code: {response.status_code}")
                 continue
 
             visited.add(url)
             soup = BeautifulSoup(response.text, "lxml")
             text = soup.get_text(separator=" ", strip=True)
-            st.info(f"Extracted {len(text)} characters from {url}")
+
+            chars_extracted = len(text)
+            crawl_log.append(f"✅ Extracted {chars_extracted} characters from {url}")
+
             combined_text += text[:5000] + "\n\n"
             new_links = get_internal_links(start_url, response.text)
             to_visit.update(new_links - visited)
+
         except Exception as e:
-            st.warning(f"Exception fetching {url}: {e}")
+            crawl_log.append(f"⚠️ Exception fetching {url}: {e}")
             continue
 
-    return combined_text[:text_limit]
+    return combined_text[:text_limit], crawl_log
 
 
 def extract_pdf_sections(pdf_file, text_limit=10000):
@@ -169,15 +175,23 @@ if uploaded_excel:
         with col1:
             if "website_analysis" not in st.session_state[company_key]:
                 st.write(f"🌐 Crawling website: {website_url} (max {max_pages} pages, {website_char_limit} chars limit)")
-                website_text = crawl_website(website_url, max_pages=max_pages, text_limit=website_char_limit)
+                website_text, crawl_log = crawl_website(website_url, max_pages=max_pages, text_limit=website_char_limit)
                 if website_text:
                     st.write("💬 Running GPT analysis for Website...")
                     website_analysis = analyze_text(website_text, f"{company_name} Website", gpt_model)
                 else:
                     website_analysis = "Could not extract website content."
+
                 st.session_state[company_key]["website_analysis"] = website_analysis
+                st.session_state[company_key]["crawl_log"] = crawl_log
             else:
                 website_analysis = st.session_state[company_key]["website_analysis"]
+                crawl_log = st.session_state[company_key].get("crawl_log", [])
+
+            # Show crawl log
+            with st.expander("🔍 Crawl Log (Page-wise Details)"):
+                for log in crawl_log:
+                    st.markdown(f"- {log}")
 
             st.markdown(f"**Website Analysis:** {website_analysis}")
 
