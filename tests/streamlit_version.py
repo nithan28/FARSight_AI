@@ -19,8 +19,8 @@ TARGET_SECTIONS = [
     "company affair", "introduction", "background", "overview of the company",
     "overview of the business", "background information", "principal service"
 ]
-#OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+#OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 
 if not OPENAI_API_KEY:
     st.error("OpenAI_API_KEY not found. Please set it as an environment variable.")
@@ -145,21 +145,45 @@ if uploaded_excel:
         st.error(f"Failed to read Excel file: {e}")
         st.stop()
 
-    expected_cols = {"Company Name", "Website URL"}
-    if not expected_cols.issubset(df.columns):
-        st.error(f"Input Excel must contain columns: {expected_cols}")
+    if df.shape[1] < 2:
+        st.error("Input Excel must have at least two columns: one for Company Name and another for Website URL.")
         st.stop()
 
-    st.success(f"Loaded {len(df)} companies from Excel.")
-    st.markdown("---")
-    st.header("Company-wise Analysis")
+    default_company_col = df.columns[0]
+    default_website_col = df.columns[1]
+
+    with st.expander("🔧 Column Mapping (Optional: Override Auto-detected Columns)", expanded=False):
+        cols = df.columns.tolist()
+        selected_company_col = st.selectbox("Select column for Company Name:", cols, index=0)
+        selected_website_col = st.selectbox("Select column for Website URL:", cols, index=1)
+
+    company_col = selected_company_col or default_company_col
+    website_col = selected_website_col or default_website_col
+
+    st.success(
+        f"Loaded {len(df)} companies from Excel. Using '{company_col}' as Company Name and '{website_col}' as Website URL.")
+
+    #company_col = df.columns[0]
+    #website_col = df.columns[1]
+
+    #st.success(
+    #    f"Loaded {len(df)} companies from Excel. Using columns: '{company_col}' for Company Name and '{website_col}' for Website URL.")
+
+    #expected_cols = {"Company Name", "Website URL"}
+    #if not expected_cols.issubset(df.columns):
+    #    st.error(f"Input Excel must contain columns: {expected_cols}")
+    #    st.stop()
+
+    #st.success(f"Loaded {len(df)} companies from Excel.")
+    #st.markdown("---")
+    #st.header("Company-wise Analysis")
 
     if "analysis_results" not in st.session_state:
         st.session_state.analysis_results = {}
 
     for idx, row in df.iterrows():
-        company_name = row["Company Name"]
-        website_url = row["Website URL"]
+        company_name = row[company_col]
+        website_url = row[website_col]
         company_key = f"company_{idx}"
 
         if company_key not in st.session_state:
