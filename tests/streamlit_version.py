@@ -17,7 +17,7 @@ TARGET_SECTIONS = [
     "business overview", "corporate information", "md&a", "principal product",
     "segment report", "business operations", "company overview", "companies affair",
     "company affair", "introduction", "background", "overview of the company",
-    "overview of the business", "background information"
+    "overview of the business", "background information", "principal service"
 ]
 #OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
