@@ -191,15 +191,45 @@ if uploaded_excel:
 
         st.subheader(f"{idx + 1}. {company_name}")
 
+        with st.expander(f"⚙️ Override Settings for {company_name}", expanded=False):
+            override_max_pages = st.number_input(
+                "Max Pages to Crawl",
+                min_value=1, max_value=50, value=max_pages, key=f"max_pages_{idx}"
+            )
+            override_website_char_limit = st.number_input(
+                "Website Text Limit (chars)",
+                min_value=1000, max_value=50000, value=website_char_limit, key=f"website_limit_{idx}"
+            )
+            override_pdf_char_limit = st.number_input(
+                "PDF Text Limit (chars)",
+                min_value=1000, max_value=30000, value=pdf_char_limit, key=f"pdf_limit_{idx}"
+            )
+
+        # --- Track override changes for this company ---
+        override_state_key = f"overrides_{idx}"
+        prev_settings = st.session_state.get(override_state_key, {})
+
+        current_settings = {
+            "max_pages": override_max_pages,
+            "website_limit": override_website_char_limit,
+            "pdf_limit": override_pdf_char_limit,
+        }
+
+        overrides_changed = current_settings != prev_settings
+        st.session_state[override_state_key] = current_settings
+
         pdf_file = st.file_uploader(f"Upload Annual Report PDF for {company_name} (optional)", type="pdf",
                                     key=f"pdf_{idx}")
 
         col1, col2 = st.columns(2)
 
         with col1:
-            if "website_analysis" not in st.session_state[company_key]:
-                st.write(f"🌐 Crawling website: {website_url} (max {max_pages} pages, {website_char_limit} chars limit)")
-                website_text, crawl_log = crawl_website(website_url, max_pages=max_pages, text_limit=website_char_limit)
+            if "website_analysis" not in st.session_state[company_key] or overrides_changed:
+                st.write(
+                    f"🌐 Crawling website: {website_url} (max {override_max_pages} pages, {override_website_char_limit} chars limit)")
+                website_text, crawl_log = crawl_website(
+                    website_url, max_pages=override_max_pages, text_limit=override_website_char_limit
+                )
                 if website_text:
                     st.write("💬 Running GPT analysis for Website...")
                     website_analysis = analyze_text(website_text, f"{company_name} Website", gpt_model)
@@ -208,6 +238,7 @@ if uploaded_excel:
 
                 st.session_state[company_key]["website_analysis"] = website_analysis
                 st.session_state[company_key]["crawl_log"] = crawl_log
+
             else:
                 website_analysis = st.session_state[company_key]["website_analysis"]
                 crawl_log = st.session_state[company_key].get("crawl_log", [])
@@ -221,17 +252,19 @@ if uploaded_excel:
 
         with col2:
             if pdf_file is not None:
-                if st.session_state[company_key].get("last_pdf_filename") != pdf_file.name:
-                    st.write(f"📄 Extracting PDF sections (up to {pdf_char_limit} chars)...")
-                    pdf_text, pages_used = extract_pdf_sections(pdf_file, text_limit=pdf_char_limit)
+                if st.session_state[company_key].get("last_pdf_filename") != pdf_file.name or overrides_changed:
+                    st.write(f"📄 Extracting PDF sections (up to {override_pdf_char_limit} chars)...")
+                    pdf_text, pages_used = extract_pdf_sections(pdf_file, text_limit=override_pdf_char_limit)
                     if pdf_text:
                         st.write("💬 Running GPT analysis for Annual Report...")
                         pdf_analysis = analyze_text(pdf_text, f"{company_name} Annual Report", gpt_model)
                     else:
                         pdf_analysis = "No relevant sections found in PDF."
+
                     st.session_state[company_key]["pdf_analysis"] = pdf_analysis
                     st.session_state[company_key]["pages_used"] = pages_used
                     st.session_state[company_key]["last_pdf_filename"] = pdf_file.name
+
                 else:
                     pdf_analysis = st.session_state[company_key].get("pdf_analysis", "")
                     pages_used = st.session_state[company_key].get("pages_used", [])
