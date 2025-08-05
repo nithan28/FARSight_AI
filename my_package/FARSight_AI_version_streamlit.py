@@ -19,8 +19,8 @@ TARGET_SECTIONS = [
     "company affair", "introduction", "background", "overview of the company",
     "overview of the business", "background information", "principal service"
 ]
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-#OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+#OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 
 if not OPENAI_API_KEY:
     st.error("OpenAI_API_KEY not found. Please set it as an environment variable.")
