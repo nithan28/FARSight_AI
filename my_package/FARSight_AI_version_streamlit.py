@@ -133,7 +133,7 @@ def analyze_text(text, source_name, model_name, user_addition=None):
 # ---------------- Streamlit UI ----------------
 
 st.set_page_config(page_title="FAR Analysis Tool", layout="wide")
-st.title("🧾 Functional Analysis (FAR) Automation")
+st.title("🧾 FAR-Sight AI Tool")
 
 with st.expander("⚙️ Configuration", expanded=True):
     gpt_model = st.selectbox("Select GPT Model:", options=["gpt-3.5-turbo", "gpt-4", "gpt-4o"], index=0)
